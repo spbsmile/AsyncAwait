@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -21,80 +22,40 @@ namespace ConsoleApplication1
             Console.ReadKey();
         }
       
-        private static async Task<XElement> GetRequest(string url)
+        private static async Task<OffersData> GetRequest(string url)
         {
             var fromWeb = await Task.Run(() => XElement.Load(url));
-            new XmlSerializer(typeof (UmlCatalog)).Deserialize(fromWeb.CreateReader());
-            return fromWeb;
+
+            var offersRoot = fromWeb.Descendants().FirstOrDefault(d => d.Name.LocalName.Equals("offers"));
+            return (OffersData)new XmlSerializer(typeof(OffersData)).Deserialize(offersRoot.CreateReader());
         }
 
-        private static async void SendRequest(XElement data, string url)
+        private static async void SendRequest(OffersData offersData, string url)
         {
-            var result = data.Descendants("offer")
-                .FirstOrDefault(el => el.Attribute("id") != null &&
-                                      el.Attribute("id").Value == "12344");
+            var offer = offersData.Offers
+                .FirstOrDefault(x => x.Id == 12344);
+
+            var stringwriter = new System.IO.StringWriter();
+            var serializer = new XmlSerializer(offer.GetType());
+            serializer.Serialize(stringwriter, offer);
 
             var doc = new XmlDocument();
-            doc.LoadXml(result.ToString());
+            doc.LoadXml(stringwriter.ToString());
 
             await new WebClient().UploadStringTaskAsync(new Uri(url), "POST", JsonConvert.SerializeXmlNode(doc));
         }
     }
 
-    [XmlRoot("yml_catalog")]
-    public class UmlCatalog
+    [XmlRoot("offers")]
+    public class OffersData
     {
-        [XmlElement("shop")]
-        public Shop Shop { get; set; }
-    }
+        public OffersData()
+        {
+            Offers = new List<Offer>();
+        }
 
-    public class Shop
-    {
-        [XmlElement("name")]
-        public string Name { get; set; }
-        [XmlElement("company")]
-        public string Company { get; set; }
-        [XmlElement("url")]
-        public string Url { get; set; }
-
-        [XmlArray("currencies")]
-        [XmlArrayItem("currency")]
-        public Currency[] Currencies { get; set; }
-        [XmlArray("categories")]
-        [XmlArrayItem("category")]
-        public Category[] Categories { get; set; }
-        [XmlElement("local_delivery_cost")]
-        public string LocalDileveryCost { get; set; }
-        [XmlArray("offers")]
-        [XmlArrayItem("offer")]
-        public Offer[] Offers { get; set; }
-    }
-
-    public class Currency
-    {
-        [XmlAttribute("id")]
-        public string Id { get; set; }
-        [XmlAttribute("rate")]
-        public string Rate { get; set; }
-        [XmlAttribute("plus")]
-        public string Plus { get; set; }
-    }
-
-    public class Category
-    {
-        [XmlAttribute("id")]//, DefaultValue("")
-        public int Id { get; set; }
-        [XmlText]
-        public string Name { get; set; }
-        [XmlAttribute("parentId")]
-        public int ParentId { get; set; }
-    }
-
-    public class CategoryId
-    {
-        [XmlAttribute("type")]
-        public string Type { get; set; }
-        [XmlText] public int id;
+        [XmlElement("offer")]
+        public List<Offer> Offers { get; set; }
     }
 
     public class Offer
@@ -120,10 +81,8 @@ namespace ConsoleApplication1
         [XmlElement("categoryId")]
         public CategoryId CategoryId { get; set; }
 
-
         [XmlElement("picture")]
         public string Picture { get; set; }
-
         [XmlElement("delivery")]
         public bool Delivery { get; set; }
         [XmlElement("local_delivery_cost")]
@@ -142,5 +101,13 @@ namespace ConsoleApplication1
         public bool ManufacturerWarranty { get; set; }
         [XmlElement("country_of_origin")]
         public string CountryOfOrigin { get; set; }
+    }
+
+    public class CategoryId
+    {
+        [XmlAttribute("type")]
+        public string Type { get; set; }
+        [XmlText]
+        public int id;
     }
 }
