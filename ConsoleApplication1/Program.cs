@@ -22,22 +22,20 @@ namespace ConsoleApplication1
             Console.ReadKey();
         }
       
-        private static async Task<OffersData> GetRequest(string url)
+        private static async Task<Shop> GetRequest(string url)
         {
             var fromWeb = await Task.Run(() => XElement.Load(url));
-
-            var offersRoot = fromWeb.Descendants().FirstOrDefault(d => d.Name.LocalName.Equals("offers"));
-            return (OffersData)new XmlSerializer(typeof(OffersData)).Deserialize(offersRoot.CreateReader());
+            var shopRoot = fromWeb.Descendants().FirstOrDefault(d => d.Name.LocalName.Equals("shop"));
+            return (Shop)new XmlSerializer(typeof(Shop)).Deserialize(shopRoot.CreateReader());
         }
 
-        private static async void SendRequest(OffersData offersData, string url)
+        private static async void SendRequest(Shop shop, string url)
         {
-            var offer = offersData.Offers
-                .FirstOrDefault(x => x.Id == 12344);
+            var offers = shop.Offers;
 
             var stringwriter = new System.IO.StringWriter();
-            var serializer = new XmlSerializer(offer.GetType());
-            serializer.Serialize(stringwriter, offer);
+            var serializer = new XmlSerializer(offers.GetType());
+            serializer.Serialize(stringwriter, offers);
 
             var doc = new XmlDocument();
             doc.LoadXml(stringwriter.ToString());
@@ -46,16 +44,12 @@ namespace ConsoleApplication1
         }
     }
 
-    [XmlRoot("offers")]
-    public class OffersData
+    [XmlRoot("shop")]
+    public class Shop
     {
-        public OffersData()
-        {
-            Offers = new List<Offer>();
-        }
-
-        [XmlElement("offer")]
-        public List<Offer> Offers { get; set; }
+        [XmlArray("offers")]
+        [XmlArrayItem("offer")]
+        public Offer[] Offers { get; set; }
     }
 
     public class Offer
